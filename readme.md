@@ -98,6 +98,38 @@ python benchmarks/run.py examples/toy_data.csv.gz
 
 Or open the step-by-step notebook: [`benchmarks/example_notebook.ipynb`](benchmarks/example_notebook.ipynb)
 
+### Example datasets
+
+Three serial-section datasets are distributed via a public
+[Google Drive folder](https://drive.google.com/drive/folders/1vjsjZSWu7b8wZgmIUHY3kMTj8POUOOjj).
+Download them once into `~/.cache/spacemap-data` (or set `SPACEMAP_DATA_DIR`),
+then `data.fetch(name)` returns the local path:
+
+| Name | Platform / tissue | Layers |
+|------|-------------------|--------|
+| `xenium_polyp` | Xenium (transcriptomics), polyp | 20 |
+| `codex_colon` | CODEX (proteomics), colon | 16 |
+| `codex_duodenum` | CODEX (proteomics), duodenum (raw + reference alignment) | 16 |
+
+```python
+from space_map.api import data, register, RegistrationConfig
+import pandas as pd
+
+path = data.fetch("xenium_polyp")            # local path (see download note above)
+cols = data.columns("xenium_polyp")          # {'x_col','y_col','layer_col'}
+df = pd.read_csv(path)
+xys = [g[[cols["x_col"], cols["y_col"]]].to_numpy(float)
+       for _, g in df.groupby(cols["layer_col"], sort=True)]
+result = register(xys, RegistrationConfig(workdir="run-out", seed=0))
+```
+
+The default matching method is `auto` (SIFT + the LoFTR deep matcher; LoFTR
+downloads a checkpoint on first use). For a lighter, checkpoint-free run pass
+`method="sift_vgg"`.
+
+The full walkthrough for all three platforms is in
+[`examples/tutorial.ipynb`](examples/tutorial.ipynb).
+
 For the full dataset (32 layers, ~2.9M cells, ~1 hour): `python benchmarks/run.py examples/cells2.csv.gz`
 
 **Sample dataset with cell types** (20 layers, ~1.87M cells): download from [Releases](https://github.com/czhu/space-map/releases/download/v0.1.0/celltype_0427.csv.gz)

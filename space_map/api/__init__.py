@@ -17,7 +17,8 @@ from .result import RegistrationResult
 from .register import register
 from .qc import compute_qc
 from .transform import build_archive, replay_affine, verify_affine_replay
+from . import data
 
 __all__ = ["RegistrationConfig", "RegistrationResult", "register",
            "compute_qc", "build_archive", "replay_affine",
-           "verify_affine_replay"]
+           "verify_affine_replay", "data"]
