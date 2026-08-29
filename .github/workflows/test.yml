@@ -1,0 +1,75 @@
+name: Tests
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+
+      - name: Import check
+        run: python -c "import space_map; print(space_map.__version__)"
+
+      - name: Run test suite
+        env:
+          MPLBACKEND: Agg
+        run: pytest -v
+
+      - name: CLI smoke test
+        run: space-map register --help
+
+  wheel-install:
+    name: Build & install wheel (no repo on path)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Install wheel into a clean venv
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install --upgrade pip
+          /tmp/clean/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+          /tmp/clean/bin/pip install dist/*.whl
+
+      - name: Import + CLI from installed wheel (outside repo)
+        run: |
+          cd /tmp
+          /tmp/clean/bin/python -c "import space_map; from space_map.api import register, RegistrationConfig; print('installed', space_map.__version__)"
+          /tmp/clean/bin/space-map register --help
+
+      - name: Verify LICENSE and CITATION are packaged
+        run: |
+          python -m pip install --upgrade twine
+          twine check dist/*

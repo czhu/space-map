@@ -1,0 +1,58 @@
+site_name: Space-map
+site_description: Reconstructing atlas-level single-cell 3D tissue maps from serial sections
+site_url: https://czhu.github.io/space-map
+repo_url: https://github.com/czhu/space-map
+repo_name: czhu/space-map
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: blue
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+
+plugins:
+  - search
+
+exclude_docs: |
+  BUILDING.md
+  code.py
+  alignment/*
+  analysis/*
+  api/*
+  architecture/*
+  data/*
+  examples/*
+  feature/*
+  grid/*
+  overview/*
+  reconstruction/*
+  registration/*
+  workflow/*
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed
+  - pymdownx.arithmatex:
+      generic: true
+  - admonition
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+  - Contributing: contributing.md 
+  

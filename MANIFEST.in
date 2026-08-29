@@ -1,0 +1,10 @@
+include readme.md
+include LICENSE
+include CITATION.cff
+include CHANGELOG.md
+include requirement.txt
+recursive-include space_map *.py
+recursive-exclude tests *
+recursive-exclude examples *
+global-exclude __pycache__
+global-exclude *.py[co]
