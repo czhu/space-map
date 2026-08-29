@@ -100,35 +100,38 @@ Or open the step-by-step notebook: [`benchmarks/example_notebook.ipynb`](benchma
 
 ### Example datasets
 
-Three serial-section datasets are distributed via a public
-[Google Drive folder](https://drive.google.com/drive/folders/1vjsjZSWu7b8wZgmIUHY3kMTj8POUOOjj).
-Download them once into `~/.cache/spacemap-data` (or set `SPACEMAP_DATA_DIR`),
-then `data.fetch(name)` returns the local path:
+Three serial-section datasets are used in the examples below:
 
-| Name | Platform / tissue | Layers |
-|------|-------------------|--------|
-| `xenium_polyp` | Xenium (transcriptomics), polyp | 20 |
-| `codex_colon` | CODEX (proteomics), colon | 16 |
-| `codex_duodenum` | CODEX (proteomics), duodenum (raw + reference alignment) | 16 |
+| Name | File | Platform / tissue | Layers | Columns |
+|------|------|-------------------|--------|---------|
+| `xenium_polyp` | `xenium_polyp.csv.gz` | Xenium (transcriptomics), polyp | 20 | `x`, `y`, `layer` |
+| `codex_colon` | `codex_colon.csv.gz` | CODEX (proteomics), colon | 16 | `x`, `y`, `array` |
+| `codex_duodenum` | `codex_duodenum.csv.gz` | CODEX (proteomics), duodenum | 16 | `raw_x`, `raw_y`, `x`, `y`, `layer` |
 
-```python
-from space_map.api import data, register, RegistrationConfig
-import pandas as pd
+Place the three files in `examples/data/` (obtain them from your dataset
+source).
 
-path = data.fetch("xenium_polyp")            # local path (see download note above)
-cols = data.columns("xenium_polyp")          # {'x_col','y_col','layer_col'}
-df = pd.read_csv(path)
-xys = [g[[cols["x_col"], cols["y_col"]]].to_numpy(float)
-       for _, g in df.groupby(cols["layer_col"], sort=True)]
-result = register(xys, RegistrationConfig(workdir="run-out", seed=0))
+**Test with the notebook** — open
+[`examples/tutorial.ipynb`](examples/tutorial.ipynb) and run all cells; it
+registers all three datasets and prints per-dataset QC.
+
+**Test from the command line** — `examples/run_platforms.py` registers one
+dataset at a time (pass the columns for that platform):
+
+```bash
+python examples/run_platforms.py xenium examples/data/xenium_polyp.csv.gz \
+    --output out/xenium --x-col x --y-col y --layer-col layer
+python examples/run_platforms.py codex  examples/data/codex_colon.csv.gz \
+    --output out/codex  --layer-col array
+python examples/run_platforms.py codex  examples/data/codex_duodenum.csv.gz \
+    --output out/duodenum --x-col raw_x --y-col raw_y --layer-col layer
 ```
+
+Add `--subsample 20000` for a quick smoke test on the full stacks.
 
 The default matching method is `auto` (SIFT + the LoFTR deep matcher; LoFTR
 downloads a checkpoint on first use). For a lighter, checkpoint-free run pass
-`method="sift_vgg"`.
-
-The full walkthrough for all three platforms is in
-[`examples/tutorial.ipynb`](examples/tutorial.ipynb).
+`--method sift_vgg` (CLI) or `method="sift_vgg"` (`RegistrationConfig`).
 
 For the full dataset (32 layers, ~2.9M cells, ~1 hour): `python benchmarks/run.py examples/cells2.csv.gz`
 
