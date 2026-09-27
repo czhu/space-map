@@ -40,6 +40,10 @@ from . import affine_block
 
 from . import flow
 
+from . import qc
+
+from . import io as io
+
 from .utils import compare
 
 # Stable publication-facing shell (facade over the kernel; does not alter it).

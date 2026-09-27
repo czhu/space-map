@@ -53,7 +53,7 @@ setup(
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "Topic :: Scientific/Engineering :: Image Recognition",
-        "License :: OSI Approved :: MIT License",
+        "License :: Other/Proprietary License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
@@ -62,7 +62,7 @@ setup(
     ],
     python_requires=">=3.10",
     keywords="spatial-transcriptomics 3d-reconstruction tissue-mapping image-registration lddmm codex xenium",
-    license="MIT",
+    license="PolyForm-Noncommercial-1.0.0",
     include_package_data=True,
     zip_safe=False,
 )

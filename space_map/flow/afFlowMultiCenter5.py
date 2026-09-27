@@ -69,7 +69,7 @@ class AutoFlowMultiCenter5(AutoFlowMultiCenter4):
         space_map.Info("LDMMgrMulti: Start Affine Pair&Merge")
         method = self.alignMethod
         if method is None:
-            method = "sift_vgg"
+            method = "auto"
         space_map.affine_block.AutoAffineImgKey.restart()
         initS = self.slices[0]
         key = self.affineKey

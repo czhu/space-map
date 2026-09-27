@@ -33,7 +33,11 @@ class AffineFlowMgrImg(AffineFlowMgrBase):
             # H_ = spacemap.he_img.multiply_HH([H_, H])
             # self.imgJ = spacemap.he_img.rotate_imgH(self.__imgJ, H_)
             self.imgJ = space_map.he_img.rotate_imgH(self.imgJ, H)
+            # Effective cumulative transform now applied to imgJ = H @ (already
+            # appended H's). AffineH hasn't been updated with this H yet.
+            self._pending_H = np.dot(H, self.resultH())
             err = self.current_err(show=showErr)
+            self._pending_H = None
             self.AffineH.append((H, err, flow.name))
         return self.imgI, self.imgJ
     
@@ -45,6 +49,12 @@ class AffineFlowMgrImg(AffineFlowMgrBase):
         return H
     
     def current_err(self, show=True):
+        # For multi-channel weighted scoring: tell the finder the cumulative
+        # transform currently applied to imgJ so it can warp the auxiliary
+        # channels the same way before scoring.
+        if hasattr(self.affineFinder, "set_transform"):
+            H = getattr(self, "_pending_H", None)
+            self.affineFinder.set_transform(H if H is not None else self.resultH())
         return self.affineFinder.computeI(self.imgI, self.imgJ, show=show)
     
     @staticmethod

@@ -67,7 +67,7 @@ class AutoFlowBasic2:
         space_map.Info("LDMMgrMulti: Start Affine Pair&Merge")
         method = self.alignMethod
         if method is None:
-            method = "sift_vgg"
+            method = "auto"
         space_map.affine_block.AutoAffineImgKey.restart()
         initS = self.slices[0]
         key = self.affineKey
@@ -117,7 +117,7 @@ class AutoFlowBasic2:
         space_map.Info("LDMMgrMulti: Start Affine2 Pair&Merge")
         method = self.alignMethod
         if method is None:
-            method = "sift_vgg"
+            method = "auto"
         space_map.affine_block.AutoAffineImgKey.restart()
         initS = self.slices[0]
         key = self.affineKey

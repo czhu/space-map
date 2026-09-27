@@ -3,7 +3,7 @@
 Space-map is an open-source framework for reconstructing atlas-level single-cell 3D tissue maps from serial sections. It integrates single-cell coordinates with optional histological image features to assemble serial sections into 3D models, combining multi-scale feature matching with large-deformation diffeomorphic metric mapping (LDDMM) to deliver global reconstructions while preserving local micro-anatomy.
 
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://czhu.github.io/space-map)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](LICENSE)
 
 ## Key Features
 
@@ -282,7 +282,13 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Space-map is licensed under the **PolyForm Noncommercial License 1.0.0** — see
+the [LICENSE](LICENSE) file for the full terms.
+
+- **Noncommercial use is free**: academic, educational, personal, and other
+  noncommercial research is permitted at no cost.
+- **Commercial / industrial use requires a separate paid license.** To request
+  one, contact **Michael Snyder** (Stanford University).
 
 ## Support
 

@@ -52,6 +52,27 @@ class AutoFlowMultiCenter4:
     def _affine_fix(self, imgs, Hs):
         return Hs
 
+    def _build_weighted_finder(self, S1, S2):
+        """Assemble a WeightedFinder from S1/S2 multi-channel images.
+
+        Feature matching still runs on density only; this finder is used solely
+        to *rank* candidate affine matrices, scoring density plus every shared
+        auxiliary channel (cell types / genes) — each channel compared on its
+        own, weighted by its cell count.
+        """
+        keys1, imgs1, w1 = S1.get_multi_img(self.initJKey, scale=True, fixHe=False)
+        keys2, imgs2, w2 = S2.get_multi_img(self.initJKey, scale=True, fixHe=False)
+        m1 = {k: (img, w) for k, img, w in zip(keys1, imgs1, w1)}
+        m2 = {k: (img, w) for k, img, w in zip(keys2, imgs2, w2)}
+        shared = [k for k in keys1 if k in m2 and k != space_map.SliceImg.DF]
+        if not shared:
+            return None
+        aux_pairs = []
+        for k in shared:
+            imgI, wI = m1[k]
+            aux_pairs.append((imgI, m2[k][0], min(wI, m2[k][1])))
+        return space_map.find.WeightedFinder(aux_pairs=aux_pairs)
+
     def _affine_run(self, S1, S2, useKey, i, show, initS, key):
         img1 = S1.create_img(useKey, self.initJKey, fixHe=True)
         img2 = S2.create_img(useKey, self.initJKey, fixHe=True)
@@ -61,6 +82,9 @@ class AutoFlowMultiCenter4:
         if useKey == "DF":
             df = (S1.ps(self.initJKey), S2.ps(self.initJKey))
         mgr = space_map.affine_block.AutoAffineImgKey(img1, img2, show=show, method=self.alignMethod)
+        finder = self._build_weighted_finder(S1, S2)
+        if finder is not None:
+            mgr.affineFinder = finder
         # mgr.each.lastImgs.lastH = lastH
         mgr.run(df)
         H21 = mgr.resultH_img()
@@ -74,7 +98,7 @@ class AutoFlowMultiCenter4:
         space_map.Info("LDMMgrMulti: Start Affine Pair&Merge")
         method = self.alignMethod
         if method is None:
-            method = "sift_vgg"
+            method = "auto"
         space_map.affine_block.AutoAffineImgKey.restart()
         initS = self.slices[0]
         key = self.affineKey

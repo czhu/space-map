@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use Space-map in your research, please cite it as below."
 title: "Space-map: Reconstructing atlas-level single-cell 3D tissue maps from serial sections"
 type: software
-license: MIT
+license: LicenseRef-PolyForm-Noncommercial-1.0.0
 url: "https://github.com/czhu/space-map"
 repository-code: "https://github.com/czhu/space-map"
 authors:

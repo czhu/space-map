@@ -163,6 +163,7 @@ $RECYCLE.BIN/
 *.hdf5
 data/
 outputs/
+out/
 checkpoints/
 wandb/
 

@@ -18,7 +18,7 @@ class RegistrationConfig:
     ----------
     method:
         Affine matching method passed to the kernel (``alignMethod``). ``None``
-        lets the kernel choose its default (``sift_vgg``). Accepted values
+        lets the kernel choose its default (``auto``). Accepted values
         mirror the kernel: ``"sift"``, ``"sift_vgg"``, ``"loftr"``, ``"auto"``.
     device:
         Torch device string (``"cuda:0"``, ``"mps"``, ``"cpu"``). ``None`` uses

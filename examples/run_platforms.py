@@ -24,7 +24,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+
+# Ensure THIS repo's space_map wins over any editable/site-packages install.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import pandas as pd
@@ -83,7 +87,7 @@ def main(argv=None):
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--subsample", type=int, default=None,
                    help="max cells per layer (for a fast smoke run)")
-    p.add_argument("--method", default="sift_vgg")
+    p.add_argument("--method", default="auto")
     args = p.parse_args(argv)
 
     from space_map.api import register, RegistrationConfig, verify_affine_replay

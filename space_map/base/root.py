@@ -29,6 +29,10 @@ IMGCONF_CMP = {"raw": 0, "kernel": 3, "hull": 1}
 BASE = "data/flow"
 APPEND = np.array([0, 0])
 
+# Default number of most-abundant cell types kept when a "celltype" channel is
+# expanded to one-hot auxiliary channels in Slice.init_df (override per call).
+CELLTYPE_TOPN = 10
+
 import torch as _torch
 
 def _detect_device():
