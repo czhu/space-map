@@ -3,7 +3,7 @@
 Space-map alignment script — one command to align your spatial data.
 
 Usage:
-    python benchmarks/run.py examples/cells2.csv.gz
+    python benchmarks/run.py examples/xenium_full.csv.gz
     python benchmarks/run.py your_data.csv --output results/
     python benchmarks/run.py your_data.csv --layer-col section --x-col cx --y-col cy
 
@@ -125,7 +125,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python benchmarks/run.py examples/cells2.csv.gz
+  python benchmarks/run.py examples/xenium_full.csv.gz
   python benchmarks/run.py data.csv --output my_results/
   python benchmarks/run.py data.csv --x-col cx --y-col cy --layer-col section
         """,

@@ -8,51 +8,91 @@ Space-map is an open-source framework for reconstructing atlas-level single-cell
 ## Key Features
 
 - **Multi-modal Registration**: Combines cell coordinates, cell types, gene expression, and histological images for robust alignment
+- **Multi-channel Affine Scoring**: Auxiliary channels (cell types, marker genes) weighted by cell count refine the choice of the affine transform
 - **Two-stage Registration Approach**: Efficient coarse alignment followed by precise fine registration
 - **Advanced Feature Matching**: Combines deep learning (LoFTR) with traditional computer vision methods (SIFT)
 - **GPU-accelerated LDDMM**: Optimized for handling large-scale cellular data from multiple tissue sections
 - **Global Consistency**: Ensures structural coherence between non-adjacent sections
+- **3D Outputs**: Per-layer Imaris-ready TIFF stacks, aligned coordinate tables, and cell-type-colored 3D previews
+- **Built-in QC**: SIFT-based section-similarity check to catch mis-ordered or damaged sections before registration
 - **High Performance**: Designed to run on standard laptop hardware. Accuracy comparisons against PASTE and STalign are reported in the manuscript; see [`benchmarks/README.md`](benchmarks/README.md) to reproduce them.
 
-## Quick Start
-
-### Installation
-
-#### Option 1: Install from Source (Recommended)
+## Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/czhu/space-map.git
 cd space-map
 
-# Create virtual environment
+# Create and activate a virtual environment
 python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# Activate virtual environment
-# On Linux/Mac:
-source venv/bin/activate
-# On Windows:
-# venv\Scripts\activate
-
-# Install dependencies
+# Install dependencies and Space-map in development mode
 pip install -r requirement.txt
-
-# Install Space-map in development mode
 pip install -e .
 ```
 
-#### Option 2: Direct Installation from GitHub
-
-```bash
-pip install git+https://github.com/czhu/space-map.git
-```
+Or install directly from GitHub: `pip install git+https://github.com/czhu/space-map.git`
 
 > **Note**: Space-map will be available on PyPI soon. For now, please install from source.
 
-### Basic Usage
+## Getting Started — Example Notebooks
 
-The recommended entry point is the stable `space_map.api` facade, which runs a
-full registration and returns aligned coordinates plus quality-control and
+The recommended way to learn Space-map is through the notebooks in
+[`examples/`](examples/). Each notebook's first cell holds its input paths
+(`DATA`; the expression notebook uses `COORDS` + `MATRIX_DIRS`) — point them
+at your local copies of the data, then **Run All**.
+
+| Notebook | What it shows | Input |
+|----------|---------------|-------|
+| [`xenium_polyp.ipynb`](examples/xenium_polyp.ipynb) | End-to-end 3D reconstruction from cell coordinates (Xenium polyp, 20 layers, ~1.9M cells; ≈2 min on a laptop) | CSV with `x`, `y`, `layer` |
+| [`codex_duodenum.ipynb`](examples/codex_duodenum.ipynb) | Same pipeline on CODEX proteomics sections | CSV with `raw_x`, `raw_y`, `layer` |
+| [`xenium_celltype.ipynb`](examples/xenium_celltype.ipynb) | **Multi-channel** registration: cell-type channels weight the affine selection; cell-type-colored 3D view; per-channel Imaris TIFF export | CSV with `x`, `y`, `layer`, `cell_type` |
+| [`xenium_expression.ipynb`](examples/xenium_expression.ipynb) | **Multi-channel** with gene-expression channels loaded from 10x sparse matrices (`space_map.io`) | coordinates CSV + per-layer 10x `matrix/` dirs |
+| [`section_order_check.ipynb`](examples/section_order_check.ipynb) | QC before registration: pairwise SIFT similarity matrix, suggested section order, outlier flagging | CSV with `x`, `y`, `layer` |
+
+Every reconstruction notebook writes to an `out/` folder:
+
+- `c_{layer}.tiff` / `c_{layer}_{channel}.tiff` — per-layer single-channel TIFFs ready for Imaris
+- aligned per-cell coordinate tables (raw → aligned)
+- a ~45° 3D reconstruction PNG (colored by cell type when available)
+
+### Example datasets
+
+| Name | File | Platform / tissue | Layers | Columns |
+|------|------|-------------------|--------|---------|
+| `xenium_polyp` | `xenium_polyp.csv.gz` | Xenium (transcriptomics), polyp | 20 | `x`, `y`, `layer`, `cell_type`, `cell_id` |
+| `codex_duodenum` | `codex_duodenum.csv.gz` | CODEX (proteomics), duodenum | 16 | `raw_x`, `raw_y`, `x`, `y`, `layer` |
+
+Obtain the files from your dataset source and place them in `examples/data/`
+so the notebooks' default `DATA = 'data/...'` paths work as-is (or set `DATA`
+to any local file). Any long-format CSV (one row per cell, with x/y and a
+layer column) works the same way. The reconstruction notebooks also show
+their command-line equivalent in the final cell.
+
+### Scripted runs
+
+The same flows are available from the command line:
+
+```bash
+# One-click runner for the example flows (xenium | duodenum | celltype | all)
+python examples/run_all.py xenium   --data /path/xenium_polyp.csv.gz   -o out/xenium
+python examples/run_all.py celltype --data /path/xenium_polyp.csv.gz   --top-n 10
+
+# Your own data: the space-map CLI (installed with the package)
+space-map register /path/your_cells.csv.gz --output out/run --seed 0 \
+    --x-col x --y-col y --layer-col layer
+```
+
+The default matching method is `auto` (SIFT + the LoFTR deep matcher; LoFTR
+downloads a checkpoint on first use). For a lighter, checkpoint-free run pass
+`--method sift_vgg` (CLI) or `method="sift_vgg"`.
+
+## Python API
+
+For programmatic use, the stable `space_map.api` facade runs a full
+registration and returns aligned coordinates plus quality-control and
 provenance metadata.
 
 ```python
@@ -85,111 +125,47 @@ The facade wraps the kernel's two-stage pipeline (`FlowImport` →
 `AutoFlowMultiCenter4`) and reads back the final aligned coordinates; you do not
 need to drive the flow classes directly.
 
+### Multi-channel registration
+
+For finer control, `Slice.init_df` accepts a dict of channels or a wide
+DataFrame. `density` (the cell coordinates) is always the primary channel used
+for feature extraction; auxiliary channels — one-hot cell types or per-gene
+counts — are weighted by cell count when scoring candidate affine transforms
+(`space_map.find.WeightedFinder`). See
+[`xenium_celltype.ipynb`](examples/xenium_celltype.ipynb) and
+[`xenium_expression.ipynb`](examples/xenium_expression.ipynb) for worked
+examples, and `space_map.io` for loading 10x sparse expression matrices.
+
+### Section-order QC
+
+```python
+import space_map
+result = space_map.qc.check_order_from_csv("cells.csv.gz",
+                                           x_col="x", y_col="y", layer_col="layer")
+print(result["suggested_order"], result["flagged"])
+```
+
 ## Reproduce Results
 
 A toy dataset is included so you can verify the pipeline in ~1 minute:
 
 ```bash
-git clone https://github.com/czhu/space-map.git
-cd space-map
-pip install -e .
 python benchmarks/run.py examples/toy_data.csv.gz
 ```
 
-Or open the step-by-step notebook: [`benchmarks/example_notebook.ipynb`](benchmarks/example_notebook.ipynb)
+For the full dataset (32 layers, ~2.9M cells, ~1 hour):
+`python benchmarks/run.py examples/xenium_full.csv.gz`
 
-### Example datasets
-
-Three serial-section datasets are used in the examples below:
-
-| Name | File | Platform / tissue | Layers | Columns |
-|------|------|-------------------|--------|---------|
-| `xenium_polyp` | `xenium_polyp.csv.gz` | Xenium (transcriptomics), polyp | 20 | `x`, `y`, `layer` |
-| `codex_colon` | `codex_colon.csv.gz` | CODEX (proteomics), colon | 16 | `x`, `y`, `array` |
-| `codex_duodenum` | `codex_duodenum.csv.gz` | CODEX (proteomics), duodenum | 16 | `raw_x`, `raw_y`, `x`, `y`, `layer` |
-
-Place the three files in `examples/data/` (obtain them from your dataset
-source).
-
-**Test with the notebook** — open
-[`examples/tutorial.ipynb`](examples/tutorial.ipynb) and run all cells; it
-registers all three datasets and prints per-dataset QC.
-
-**Test from the command line** — `examples/run_platforms.py` registers one
-dataset at a time (pass the columns for that platform):
-
-```bash
-python examples/run_platforms.py xenium examples/data/xenium_polyp.csv.gz \
-    --output out/xenium --x-col x --y-col y --layer-col layer
-python examples/run_platforms.py codex  examples/data/codex_colon.csv.gz \
-    --output out/codex  --layer-col array
-python examples/run_platforms.py codex  examples/data/codex_duodenum.csv.gz \
-    --output out/duodenum --x-col raw_x --y-col raw_y --layer-col layer
-```
-
-Add `--subsample 20000` for a quick smoke test on the full stacks.
-
-The default matching method is `auto` (SIFT + the LoFTR deep matcher; LoFTR
-downloads a checkpoint on first use). For a lighter, checkpoint-free run pass
-`--method sift_vgg` (CLI) or `method="sift_vgg"` (`RegistrationConfig`).
-
-For the full dataset (32 layers, ~2.9M cells, ~1 hour): `python benchmarks/run.py examples/cells2.csv.gz`
-
-**Sample dataset with cell types** (20 layers, ~1.87M cells): download from [Releases](https://github.com/czhu/space-map/releases/download/v0.1.0/celltype_0427.csv.gz)
-
-### Running Xenium and CODEX data
-
-Both platforms use the same pipeline; only the coordinate/layer column names
-differ. Use the stable `space-map` CLI (recommended), or `benchmarks/run.py`
-to reproduce the manuscript metrics. Point the column flags at your file's
-columns.
-
-**Xenium** (spatial transcriptomics) — layers in `index`, coordinates in `Xt`/`Yt`:
-
-```bash
-# Recommended: stable CLI
-space-map register xenium_cells.csv.gz --output xenium-out \
-    --x-col Xt --y-col Yt --layer-col index --seed 0
-
-# Reproduce manuscript metrics
-python benchmarks/run.py xenium_cells.csv.gz --output results/xenium \
-    --x-col Xt --y-col Yt --layer-col index
-```
-
-**CODEX** (spatial proteomics) — sections in `array`, coordinates in `x`/`y`:
-
-```bash
-# Recommended: stable CLI (array/x/y is auto-detected)
-space-map register codex_cells.csv.gz --output codex-out --seed 0
-
-# Reproduce manuscript metrics
-python benchmarks/run.py codex_cells.csv.gz --output results/codex \
-    --layer-col array
-```
-
-Any long-format CSV works the same way — pass `--x-col`/`--y-col`/`--layer-col`
-to match your column names (defaults are `x`/`y`/`layer`).
-
-A ready-to-run script with per-platform column presets is provided at
-[`examples/run_platforms.py`](examples/run_platforms.py):
-
-```bash
-python examples/run_platforms.py xenium xenium_cells.csv.gz -o xenium-out
-python examples/run_platforms.py codex  codex_cells.csv.gz  -o codex-out
-# add --subsample 20000 for a fast smoke run on very large stacks
-```
-
-See [`benchmarks/README.md`](benchmarks/README.md) for details.
+See [`benchmarks/README.md`](benchmarks/README.md) and
+[`benchmarks/example_notebook.ipynb`](benchmarks/example_notebook.ipynb) for
+the manuscript-metric reproduction (PASTE / STalign comparisons).
 
 ## Documentation
 
 - **[Installation](https://czhu.github.io/space-map/getting-started/installation/)** - Setup and requirements
 - **[Quick Start Guide](https://czhu.github.io/space-map/getting-started/quickstart/)** - Complete tutorial
-- **[API Reference](#basic-usage)** - The stable `space_map.api` facade (see Basic Usage above)
-
-### Example Notebooks
-
-- [`benchmarks/example_notebook.ipynb`](benchmarks/example_notebook.ipynb) - Reproduce alignment results
+- **[Example Notebooks](examples/)** - Tutorials for each platform and feature (see table above)
+- **[API Reference](#python-api)** - The stable `space_map.api` facade
 
 ## Applications
 
@@ -202,12 +178,15 @@ Space-map has been successfully applied to build high-resolution 3D tissue maps 
 
 ### Core Components
 
-- **`flow.FlowImport`**: Data import and initialization
+- **`flow.FlowImport`**: Data import and initialization (`init_multi` for multi-channel)
 - **`flow.AutoFlowMultiCenter4/5`**: Registration workflow orchestration
-- **`base.Slice`**: Individual tissue section management
+- **`base.Slice`**: Individual tissue section management (per-channel `SliceImg`s)
 - **`registration`**: LDDMM and deformable registration
 - **`matches`**: Feature matching and alignment
-- **`flow.FlowExport`**: Results export and visualization
+- **`find.WeightedFinder`**: Cell-count-weighted multi-channel affine scoring
+- **`flow.FlowExport`**: Results export — Imaris TIFFs, channel tables, 3D plots
+- **`io`**: 10x sparse-matrix loading and wide-table assembly
+- **`qc`**: Section-similarity matrix, order suggestion, outlier flagging
 
 ### Project Structure
 
@@ -219,7 +198,9 @@ space_map/
 ├── flow/                # Flow-based registration pipeline
 ├── matches/             # Feature matching algorithms
 ├── registration/        # LDDMM registration
-├── find/                # Feature detection and error analysis
+├── find/                # Feature detection, error analysis, weighted scoring
+├── io/                  # 10x matrix loading helpers
+├── qc/                  # Section-order / similarity QC tools
 ├── api/                 # Stable publication-facing facade (config/register/CLI/QC)
 └── utils/               # Utility functions
 ```
@@ -232,6 +213,7 @@ space_map/
    - Fast and robust
    - Handles rotation, scaling, translation
    - Avoids local optima
+   - Optionally scored across cell-type / gene-expression channels
 
 2. **LDDMM (Fine)**: Local non-rigid deformation
    - Preserves topology

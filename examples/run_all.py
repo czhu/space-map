@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """One-click runner for the Space-map example datasets.
 
-Runs any of three flows end-to-end and writes aligned points, per-channel
-3D-volume TIFFs, and a 3D reconstruction PNG:
+Runs any of three flows end-to-end. All flows write aligned coordinates and a
+3D reconstruction PNG; the celltype flow additionally writes per-layer Imaris
+TIFFs, per-channel volume TIFFs, and a per-channel coordinate table:
 
   xenium      Xenium polyp, single-channel (density) registration
   duodenum    CODEX duodenum, single-channel (raw_x/raw_y)
@@ -28,11 +29,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matplotlib
 matplotlib.use("Agg")  # headless: save PNGs without a display
 
-# Built-in default local paths (edit to your machine, or pass --data).
+# Default data locations (place files in examples/data/, or pass --data).
 DEFAULTS = {
-    "xenium": "/Users/hrd/CODE/works/3DCell/points2/spacemap_pack/data/hf_upload/xenium_polyp.csv.gz",
-    "duodenum": "/Users/hrd/CODE/works/3DCell/points2/spacemap_pack/data/hf_upload/codex_duodenum.csv.gz",
-    "celltype": "/Users/hrd/CODE/works/3DCell/points2/spacemap_pack/data/hf_upload/xenium_polyp.csv.gz",
+    "xenium": "data/xenium_polyp.csv.gz",
+    "duodenum": "data/codex_duodenum.csv.gz",
+    "celltype": "data/xenium_polyp.csv.gz",
 }
 
 
@@ -126,13 +127,12 @@ def run_celltype(data, out, layer_col, celltype_col, x_col, y_col, method,
     fe.export_imaris_tiff(f"{out}/imaris", key=key)
     tiffs = fe.export_channel_tiffs(f"{out}/tiff/vol", key=key)
     print(f"[celltype] wrote per-layer Imaris TIFFs and {len(tiffs)} per-channel volumes")
-    fe.plot_3d(key=key, channel="DF", save=f"{out}/reconstruction_3d_density.png",
+    fe.plot_3d(key=key, channel="DF", by_celltype=False,
+               save=f"{out}/reconstruction_3d_density.png",
                title="celltype - density (aligned 3D)")
-    ct = [k for k in slices[0].imgs if k.startswith("ct::")]
-    if ct:
-        fe.plot_3d(key=key, channel=ct[0],
-                   save=f"{out}/reconstruction_3d_{ct[0].replace('::', '_')}.png",
-                   title=f"celltype - {ct[0]} (aligned 3D)")
+    if any(k.startswith("ct::") for k in slices[0].imgs):
+        fe.plot_3d(key=key, save=f"{out}/reconstruction_3d_celltype.png",
+                   title="celltype-colored (aligned 3D)")
     print(f"[celltype] done -> {out}")
 
 

@@ -14,7 +14,7 @@ pip install git+https://github.com/czhu/space-map.git
 python benchmarks/run.py examples/toy_data.csv.gz
 
 # Full run with example data (~1 hour)
-python benchmarks/run.py examples/cells2.csv.gz
+python benchmarks/run.py examples/xenium_full.csv.gz
 
 # Run with your own data
 python benchmarks/run.py your_data.csv --output results/

@@ -221,7 +221,8 @@ class FlowExport:
         ct_keys = sorted({k for s in self.slices for k in s.imgs
                           if k.startswith("ct::")})
         if by_celltype is None:
-            by_celltype = bool(ct_keys)
+            # auto-color by cell type only when no specific channel was asked for
+            by_celltype = bool(ct_keys) and channel == "DF"
 
         def pts(sImg):
             a = np.asarray(sImg.get_points(key))
