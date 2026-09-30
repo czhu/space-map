@@ -135,8 +135,8 @@ Space-map employs a two-stage registration approach:
 ## Authors & Affiliations
 
 **Lead Authors** (contributed equally):
-- **Rongduo Han** - Nankai University / Santa Clara University
-- **Chenchen Zhu** - Stanford School of Medicine
+- **Rongduo Han** - Santa Clara University
+- **Chenchen Zhu** - Genetics Department, Stanford School of Medicine
 - **Cihan Ruan** - Santa Clara University
 
 **Principal Investigator**:
@@ -147,7 +147,6 @@ Space-map employs a two-stage registration approach:
 
 ### Affiliations
 
-- College of Software, Nankai University, Tianjin, China
 - Department of Computer Science and Engineering, Santa Clara University, CA, USA
 - Department of Genetics, Stanford School of Medicine, Stanford, CA, USA
 - Department of Pathology, Stanford School of Medicine, Stanford, CA, USA
@@ -165,14 +164,14 @@ This work was supported by:
 If you use Space-map in your research, please cite:
 
 ```
-Han, R., Zhu, C., Ruan, C., et al. (2024). Space-map: Reconstructing
+Han, R., Zhu, C., Ruan, C., et al. (2026). Space-map: Reconstructing
 atlas-level single-cell 3D tissue maps from serial sections.
-[Manuscript in preparation]
+[Manuscript under review]
 ```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/czhu/space-map/blob/master/License) file for details.
+This project is licensed under the PolyForm Noncommercial License - see the [LICENSE](https://github.com/czhu/space-map/blob/master/LICENSE) file for details.
 
 ## Support & Contact
 
