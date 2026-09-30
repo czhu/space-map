@@ -280,7 +280,7 @@ the [LICENSE](LICENSE) file for the full terms.
 
 ## Authors
 
-- **Rongduo Han** - Nankai University
+- **Rongduo Han** - Santa Clara University
 - **Chenchen Zhu** - Stanford School of Medicine
 - **Cihan Ruan** - Santa Clara University
 - **Michael Snyder** - Stanford School of Medicine
