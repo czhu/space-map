@@ -2,6 +2,14 @@
 
 Align your spatial transcriptomics serial sections with one command or one notebook.
 
+These examples run Space-map and compute adjacent-section quality metrics.
+They do not reproduce the full PASTE/STalign-GT comparison in the
+[published paper](https://doi.org/10.1038/s41592-026-03310-8).
+See the [README data sources](../readme.md#example-datasets) for the study data.
+The bundled `xenium_full.csv.gz` is a legacy 32-section coordinate example;
+the published Xenium study uses 30 sections, with sections 3–22 used for the
+final 3D reconstruction.
+
 ## Quick Start
 
 ### Option 1: Command line
@@ -10,10 +18,10 @@ Align your spatial transcriptomics serial sections with one command or one noteb
 # Install
 pip install git+https://github.com/czhu/space-map.git
 
-# Quick test with toy data (~1 minute)
+# Quick test with toy data
 python benchmarks/run.py examples/toy_data.csv.gz
 
-# Full run with example data (~1 hour)
+# Larger coordinate example (legacy 32-section input)
 python benchmarks/run.py examples/xenium_full.csv.gz
 
 # Run with your own data
@@ -23,7 +31,7 @@ python benchmarks/run.py your_data.csv --output results/
 ### Option 2: Jupyter notebook
 
 ```bash
-pip install space-map jupyter
+pip install git+https://github.com/czhu/space-map.git jupyter
 jupyter notebook benchmarks/example_notebook.ipynb
 ```
 
@@ -47,7 +55,7 @@ python benchmarks/run.py data.csv --x-col cx --y-col cy --layer-col section
 
 ### Xenium and CODEX
 
-The manuscript datasets use these columns:
+The study data may use these columns; inspect your downloaded tables and pass the appropriate column names:
 
 | Platform | x | y | layer/section | Command flags |
 |----------|---|---|---------------|---------------|
@@ -75,6 +83,11 @@ The script produces three files in the output directory:
 | `summary.json` | Mean metrics across all pairs |
 
 ## Quality Metrics
+
+These scores use the runner's current density rendering. They do not implement
+all published preprocessing and metrics, including the shared 512 by 512
+soft-Dice evaluation grid, boundary IoU, and MS-SSIM. Adjacent-section agreement
+is internal QC, not independent biological ground truth.
 
 Each adjacent pair of layers is compared before and after alignment:
 

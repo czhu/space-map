@@ -1,122 +1,47 @@
 # Feature Matching
 
-> Related source files:
-> - [affine/AutoGrad.py](https://github.com/czhu/space-map/blob/ad208055/affine/AutoGrad.py)
-> - [affine_block/LdmAffine.py](https://github.com/czhu/space-map/blob/ad208055/affine_block/LdmAffine.py)
-> - [base/flowBase.py](https://github.com/czhu/space-map/blob/ad208055/base/flowBase.py)
-> - [flow/flowImport.py](https://github.com/czhu/space-map/blob/ad208055/flow/flowImport.py)
-> - [matches/LOFTR.py](https://github.com/czhu/space-map/blob/ad208055/matches/LOFTR.py)
-> - [matches/LOFTR2.py](https://github.com/czhu/space-map/blob/ad208055/matches/LOFTR2.py)
-> - [matches/matchShow.py](https://github.com/czhu/space-map/blob/ad208055/matches/matchShow.py)
-> - [matches/siftFind.py](https://github.com/czhu/space-map/blob/ad208055/matches/siftFind.py)
-> - [registration/ldm/torch_LDDMMBase.py](https://github.com/czhu/space-map/blob/ad208055/registration/ldm/torch_LDDMMBase.py)
+Space-map uses SIFT and LoFTR (Local Feature Transformer) to obtain correspondences
+between density maps derived from cell coordinates. The [paper](https://doi.org/10.1038/s41592-026-03310-8)
+describes multilevel feature filtering and RANSAC-based coarse alignment.
+Feature matching is followed by non-rigid refinement; it is not cell-to-cell
+identity matching across sections.
 
-## Introduction
+## Matcher settings
 
-Feature matching is a key component in the Space-map framework, used to identify corresponding points between images for accurate registration of tissue sections. Space-map implements two main feature matching methods: SIFT (Scale-Invariant Feature Transform) and LOFTR (Local Feature Transformer).
+The public configuration and low-level `alignMethod` accept `"auto"`, `"sift"`,
+`"sift_vgg"`, and `"loftr"`. The default `"auto"` path uses SIFT and LoFTR-based
+matching. LoFTR is provided by Kornia and downloads a pretrained checkpoint on
+first use. It can execute on CPU as well as supported accelerators.
 
-For more information about the registration workflow, see: [Registration System (LDDMM)](../registration/registration-system-(lddmm).md) and [Image Alignment](../alignment/image-alignment.md).
+In this repository, the `"sift_vgg"` branch of the OpenCV helper detects and
+computes SIFT descriptors. Its historical name does not mean a VGG neural
+network is loaded. It is a checkpoint-free option, not an independently
+benchmarked improvement over ordinary SIFT.
 
-## Overview
+## Density versus optional constraints
 
-The feature matching system is mainly responsible for:
-1. Detecting salient features in source and target images
-2. Finding correspondences between these features
-3. Filtering outlier matches
-4. Providing matches to the registration algorithm for alignment
+Feature extraction in Flow4 uses density maps. Cell-type annotations and gene
+expression can supply auxiliary channels used to score candidate affine
+transformations; they do not replace the density matcher with a joint learned
+molecular embedding. Current input and export details are in
+[Data Management](../data/data-management.md).
 
-## Feature Matching Components
+## Estimation and inspection
 
-Space-map implements two main feature matching methods:
-- SIFT (traditional computer vision method)
-- LOFTR (deep learning-based feature matching)
+The implementation includes feature-quality filtering, RANSAC-based candidate
+estimation, and section-history scoring. Some low-level helpers return 3 by 3
+homography matrices; that storage convention is not a separate biological model
+or a guarantee that all candidate transformations are suitable. Evaluate the
+resulting coordinates and tissue morphology.
 
-### SIFT Matching
+The section-order notebook uses pairwise SIFT match counts to visualize similarity
+and suggest a heuristic order. Similarity alone cannot establish the true
+histological order or prove that a section is damaged.
 
-SIFT (Scale-Invariant Feature Transform) is a traditional local feature detection and description algorithm. In Space-map, SIFT is the default feature matching method.
+## Sources
 
-#### Key Functions
-1. **Feature Detection**: `__sift_kp()` detects keypoints and computes descriptors.
-2. **Feature Matching**: `siftImageAlignment()` matches features between images, applies ratio test to filter matches, and returns corresponding point lists.
-
-#### Implementation Details
-- Uses OpenCV's `SIFT_create()` for keypoint detection
-- Uses BFMatcher for descriptor matching
-- Applies ratio test (typically 0.75) to filter low-quality matches
-- Matches are sorted by quality (inverse distance)
-- Supports multiple detectors such as SURF, ORB, etc.
-
-### LOFTR Matching
-
-LOFTR (Local Feature Transformer) is a deep learning-based feature matching method based on Transformer, directly predicting matches from image pairs.
-
-#### Key Functions
-1. **Neural Network Matching**: `loftr_compute_matches()` uses a pre-trained Transformer model to directly predict matches between images.
-2. **Multi-channel Support**: The `LOFTR` class supports multi-channel image matching.
-
-#### Implementation Details
-- Based on Kornia's `LoFTR` implementation
-- Supports indoor/outdoor scene models (`method` parameter)
-- Input is automatically normalized to [0, 1]
-- Matches include confidence scores
-- Supports confidence threshold or fixed number of matches
-- `LOFTR2` supports image block (quadrant) matching
-
-## Integration with Registration Workflow
-
-Feature matching is a key step in the image alignment workflow, providing the basis for affine and nonlinear registration.
-
-### Homography Estimation
-
-After matches are determined, Space-map uses RANSAC to estimate the homography transformation for image alignment:
-- Main function: `createHFromPoints2()`
-- Input: matched points
-- Uses OpenCV's `findHomography()` + RANSAC to compute the transformation
-- Applies the transformation and checks alignment quality
-- Fine-tunes to minimize alignment error
-
-## Match Visualization
-
-Space-map provides match visualization tools for quality control of alignment.
-
-### MatchShow Class
-
-The `MatchShow` class inherits from `AffineBlock` and is used for feature match visualization:
-- Displays original points in the first image
-- Displays transformed points in the second image
-- Connects matched points with lines
-
-## Application in AutoFlow Workflow
-
-Feature matching is mainly used in the AutoFlow automatic registration workflow:
-1. `FlowImport` loads data and creates slices
-2. Feature matching is used to find correspondences between adjacent slices
-3. These correspondences guide affine registration for coarse alignment
-4. LDDMM further refines nonlinear transformations
-
-## Best Practices
-
-| Task                    | Recommended Method         | Main Parameters                  |
-|-------------------------|---------------------------|-----------------------------------|
-| High-contrast tissue    | SIFT                      | `matchr=0.75`, method='sift'      |
-| Low-contrast images     | LOFTR                     | model="indoor"                  |
-| Multi-channel data      | LOFTR (multiChannel)      | select strongest channel or mean  |
-| Large images            | LOFTR2 (block matching)   | quadrant partition                |
-| Auto threshold          | `autoSetMatchr()`         | minCount parameter                |
-
-## Key Parameters
-
-| Parameter | Description                              | Typical Value                    |
-|-----------|------------------------------------------|----------------------------------|
-| matchr    | SIFT ratio threshold/LOFTR confidence    | 0.75 (SIFT), 0.8-0.95 (LOFTR)    |
-| method    | Feature detection method                 | 'sift', 'orb', 'surf'            |
-| scale     | Whether to normalize images              | True (normalize)                 |
-| device    | GPU device for LOFTR                     | CUDA device number               |
-
-## Conclusion
-
-Space-map's feature matching system combines traditional computer vision (SIFT) and deep learning (LOFTR) methods, providing flexible solutions for different data types and registration challenges.
-
----
-
-> For reference source code and detailed implementation, please see the related source files above. 
+- [Automatic matcher](https://github.com/czhu/space-map/blob/master/space_map/affine_block/AutoAffineImgKey.py)
+- [SIFT helper](https://github.com/czhu/space-map/blob/master/space_map/matches/siftFind.py)
+- [LoFTR helper](https://github.com/czhu/space-map/blob/master/space_map/matches/LOFTR.py)
+- [Candidate scoring](https://github.com/czhu/space-map/blob/master/space_map/affine_block/matchEachImg.py)
+- [Section-order QC](https://github.com/czhu/space-map/blob/master/space_map/qc/section_similarity.py)

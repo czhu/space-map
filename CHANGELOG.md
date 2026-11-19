@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Updated publication metadata and raw/processed data links for the Nature Methods paper.
+- Corrected method descriptions, API examples, coordinate conventions, and implementation limitations in the documentation.
+
 ### Planned
 - Add comprehensive test suite
 - Add more example notebooks
@@ -36,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of Space-map
-- Multi-modal registration combining cell coordinates, types, and histological images
+- Cell-coordinate registration with optional molecular constraints and corresponding histology integration
 - Two-stage registration: affine transformation followed by LDDMM
 - Feature matching using LoFTR and SIFT
 - GPU-accelerated LDDMM implementation
@@ -74,7 +78,7 @@ This is the first public release of Space-map, providing a complete framework fo
 
 **Key Highlights:**
 - Handles large-scale datasets (2-3M cells)
-- Accuracy compared against PASTE and STalign in the manuscript (see benchmarks/)
+- Published method evaluation is reported in the Nature Methods paper; repository examples provide internal QC rather than the complete comparison
 - Runs on standard laptop hardware
 - Comprehensive documentation and examples
 

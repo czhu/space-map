@@ -1,5 +1,5 @@
 site_name: Space-map
-site_description: Reconstructing atlas-level single-cell 3D tissue maps from serial sections
+site_description: 3D single-cell atlas reconstruction from serial sections
 site_url: https://czhu.github.io/space-map
 repo_url: https://github.com/czhu/space-map
 repo_name: czhu/space-map
@@ -23,20 +23,8 @@ plugins:
   - search
 
 exclude_docs: |
-  BUILDING.md
   code.py
-  alignment/*
-  analysis/*
-  api/*
-  architecture/*
-  data/*
-  examples/*
-  feature/*
-  grid/*
   overview/*
-  reconstruction/*
-  registration/*
-  workflow/*
 
 markdown_extensions:
   - pymdownx.highlight
@@ -51,8 +39,23 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Method and Scope: method.md
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
-  - Contributing: contributing.md 
-  
+    - Inputs and Outputs: data/data-management.md
+    - Examples: examples/examples.md
+  - Implementation:
+    - Workflow: workflow/key-workflows.md
+    - Feature Matching: feature/feature-matching.md
+    - LDDMM: registration/registration-system-(lddmm).md
+    - Histology: alignment/image-alignment.md
+    - Grid Transforms: grid/grid-transformations.md
+    - Architecture: architecture/architecture-and-core-components.md
+  - Reconstruction and Analysis:
+    - 3D Visualization: reconstruction/3d-reconstruction.md
+    - Evaluation: analysis/spatial-transcriptomics-analysis.md
+  - Python API: api/api.md
+  - Usage Guide: examples/usage.md
+  - Contributing: contributing.md
+  - Documentation Maintenance: BUILDING.md

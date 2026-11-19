@@ -1,94 +1,49 @@
-# Architecture and Core Components
+# Software Architecture
 
-> Related source files:
-> - [__init__.py](https://github.com/czhu/space-map/blob/ad208055/__init__.py)
-> - [base/base2.py](https://github.com/czhu/space-map/blob/ad208055/base/base2.py)
-> - [base/root.py](https://github.com/czhu/space-map/blob/ad208055/base/root.py)
-> - [flow/afFlowMultiCenter3.py](https://github.com/czhu/space-map/blob/ad208055/flow/afFlowMultiCenter3.py)
-> - [flow/outputs.py](https://github.com/czhu/space-map/blob/ad208055/flow/outputs.py)
-> - [docs/assets/images/logo.png](https://github.com/czhu/space-map/blob/ad208055/docs/assets/images/logo.png)
-> - [docs/assets/images/qr.png](https://github.com/czhu/space-map/blob/ad208055/docs/assets/images/qr.png)
-> - [docs/examples/examples.md](https://github.com/czhu/space-map/blob/ad208055/docs/examples/examples.md)
-> - [docs/index.md](https://github.com/czhu/space-map/blob/ad208055/docs/index.md)
-> - [docs/examples/usage.md](https://github.com/czhu/space-map/blob/ad208055/docs/examples/usage.md)
-> - [mkdocs.yml](https://github.com/czhu/space-map/blob/ad208055/mkdocs.yml)
+For the scientific method, see [Method and Scope](../method.md). This page
+identifies the implementation used by the public API and distinguishes it from
+other research workflows retained in the repository.
 
-## Introduction
+## Public entry point
 
-This page provides a high-level overview of the Space-map architecture and its main components. Space-map is designed as a modular framework focused on reconstructing 3D tissue maps from consecutive tissue sections, particularly suitable for spatial transcriptomics and proteomics data.
+`space_map.api.register()` orchestrates import, affine alignment, and Flow4
+SVF-LDDMM refinement, then returns `RegistrationResult` with coordinates,
+QC, provenance, warnings, and transform records. `RegistrationConfig` records
+run settings. The CLI calls this same wrapper.
 
-For detailed component descriptions, please refer to the sub-pages:
-- [Registration System (LDDMM)](../registration/registration-system-(lddmm).md)
-- [Grid Transformations](../grid/grid-transformations.md)
-- [Data Management (Flow, Slice)](../data/data-management.md)
-- [Feature Matching](../feature/feature-matching.md)
+## Kernel components
 
-## System Architecture Overview
+- `FlowImport`: imports ordered coordinates and optional auxiliary inputs,
+  normalizes the canvas, and creates per-section `Slice` objects.
+- `Slice` and `SliceImg`: separate data channels from processing-stage keys.
+  Density is stored under `"DF"`; section identifiers use `Slice.index`.
+- `AutoFlowMultiCenter4`: the workflow called by the public wrapper; its affine
+  and non-rigid stages use different traversal/reference strategies.
+- `matches` and `affine_block`: density-feature matching, robust transformation
+  estimation, and candidate scoring.
+- `registration.svf`: the refinement adapter used by Flow4. Legacy LDDMM modules
+  have different interfaces and parameter schedules.
+- `FlowExport`: coordinate tables, density TIFFs, and static 3D previews.
+- `io`: selected 10x sparse-expression input helpers.
+- `qc`: heuristic section-order inspection; `api.qc` produces per-run internal QC.
 
-Space-map employs a layered architecture that decouples data management, registration, and visualization while ensuring efficient data flow.
+`TransformDB` is a legacy transform-file reader, not the storage backend for
+every public registration run. Flow4 saves final point coordinates without a
+replayable dense non-rigid field. See [Grid Transformations](../grid/grid-transformations.md).
 
-## Core Components
+## Configuration boundaries
 
-Space-map consists of multiple interconnected components that work together to process and align tissue section data. The main classes and their relationships are as follows:
+`base/root.py` defines initial `XYRANGE=4000`, `XYD=10`, `IMGCONF={"raw": 1}`,
+and device detection. `FlowImport` recalculates canvas extent and grid spacing.
+Changing `space_map.base.root` attributes is not necessarily the same as changing
+the package-level names used by the kernel. Public configuration also includes
+fields whose propagation is incomplete; see the [API notes](../api/api.md#implementation-notes).
+Do not infer accelerator use, worker count, or scientific accuracy from a manifest alone.
 
-- **Registration System**: Core registration system, divided into:
-  - Affine Registration: Global coarse alignment, handling translation, rotation, scaling, and shearing.
-  - LDDMM Registration: Fine-grained nonlinear registration, preserving local structures.
-- **Grid Transformations**: Fundamental mechanism for representing and applying nonlinear deformations, supporting forward/inverse transformations, bilinear interpolation, point cloud/image transformations, and transformation composition.
-- **Data Management (Flow, Slice)**:
-  - FlowImport: Loads raw data (cell coordinates, images), initializes the workflow.
-  - Slice: Individual section object, containing raw data and all transformations.
-  - TransformDB: Manages all transformations between sections.
-  - FlowExport: Exports aligned sections and 3D models.
-- **Feature Matching**:
-  - SIFT: Traditional feature point matching.
-  - LOFTR: Transformer-based deep learning feature matching.
+## Sources
 
-## Data Processing Flow
-
-The standard workflow is as follows:
-1. FlowImport loads data
-2. Slice represents each section
-3. TransformDB manages all transformations
-4. FlowExport exports results
-
-## Multi-resolution Strategy
-
-Space-map employs a multi-resolution registration strategy (e.g., AutoFlowMultiCenter3 class) to process at different resolutions, balancing efficiency and accuracy.
-
-## TransformDB: Unified Transformation Management
-
-TransformDB provides a unified interface supporting:
-- Affine and grid transformations
-- Forward/inverse transformations
-- Automatic scaling to match input dimensions
-- Batch processing of multiple images/point sets
-
-## Configuration and Global Settings
-
-Global configuration is defined in base/root.py, including:
-
-| Setting      | Purpose                | Default Value         |
-|--------------|------------------------|----------------------|
-| XYRANGE      | Maximum coordinate range| 4000                 |
-| XYD          | Coordinate transformation scale factor| 10           |
-| BASE         | Data storage directory | "data/flow"          |
-| DEVICE       | Computing device (CPU/GPU)| "cpu" or 0        |
-| LAYER_START  | Starting layer index   | 0                    |
-| LAYER_END    | Ending layer index     | 0                    |
-| IMGCONF      | Image configuration    | {"raw": 1}           |
-
-The `auto_init_xyd` and `init_xy` in base/base2.py can automatically initialize based on input data.
-
-## Component Interaction
-
-The diagram (original class/flow diagram, suggested to add images in docs directory) shows the interaction relationships between core components in a typical registration workflow.
-
-## System Dependencies
-
-- Requires Python and related scientific computing libraries (e.g., numpy, torch, opencv, kornia)
-- Detailed dependencies can be found in the project's requirements.txt
-
----
-
-> For reference source code and detailed implementation, please see the related source files above. 
+- [Public registration wrapper](https://github.com/czhu/space-map/blob/master/space_map/api/register.py)
+- [Configuration](https://github.com/czhu/space-map/blob/master/space_map/api/config.py)
+- [Flow4](https://github.com/czhu/space-map/blob/master/space_map/flow/afFlowMultiCenter4.py)
+- [Kernel defaults](https://github.com/czhu/space-map/blob/master/space_map/base/root.py)
+- [Input conventions](../data/data-management.md)

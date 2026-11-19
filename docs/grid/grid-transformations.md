@@ -1,80 +1,43 @@
 # Grid Transformations
 
-> Related source files:
-> - [utils/fig.py](https://github.com/czhu/space-map/blob/ad208055/utils/fig.py)
-> - [utils/grid.py](https://github.com/czhu/space-map/blob/ad208055/utils/grid.py)
-> - [utils/grid3.py](https://github.com/czhu/space-map/blob/ad208055/utils/grid3.py)
-> - [utils/grid_points.py](https://github.com/czhu/space-map/blob/ad208055/utils/grid_points.py)
-> - [utils/imaris.py](https://github.com/czhu/space-map/blob/ad208055/utils/imaris.py)
-> - [utils/output.py](https://github.com/czhu/space-map/blob/ad208055/utils/output.py)
+Some low-level Space-map workflows represent nonlinear mappings as 2D grids and
+sample coordinates or images through them. This is interpolation of a spatial
+transformation, not interpolation or imputation of missing tissue sections.
 
-## Introduction
+## Coordinates and direction
 
-Grid Transformation is a core mechanism in the SpaceMap framework for representing and applying nonlinear spatial transformations. It supports mapping points (such as cell coordinates) from original section space to registered 3D space, serving as the primary carrier structure for LDDMM registration results.
+Grid helpers use normalized sampling coordinates and an explicit scale between
+coordinate units and pixels (`xyd`). Depending on the helper, a grid represents
+absolute sampling locations or a displacement/flow tensor. Do not treat these
+representations as interchangeable. Image sampling typically uses an output-to-input
+mapping; applying it to points requires the matching direction or an inverse map.
 
-For more about LDDMM registration, see: [Registration System (LDDMM)](../registration/registration-system-(lddmm).md).
+`grid3.py` provides `grid_sample_points_vectorized()`, `inverse_grid_train()`, and
+`merge_grid_img()`. Inverse-map estimation is numerical, and composition order
+matters. Confirm conventions against the specific helper and a known mapping.
 
-## Basic Concepts of Grid Transformations
+## Archives
 
-### What is a Transformation Grid?
+Legacy `TransformDB(path, ...)` reads a NumPy archive containing compatible affine
+and grid arrays. It exposes `apply_img()`, `apply_point()`, `apply_imgs()`, and
+`apply_points()`. It does not implement an empty database API for adding and
+saving arbitrary transformations.
 
-A transformation grid is a regular 2D array of displacement vectors that defines how each point in the source space maps to the target space. Each grid point contains an (x, y) vector for the target coordinates.
+The public Flow4 path is different: its transform JSON records replayable affine
+matrices and explicitly marks its non-rigid stage as not replayable. Its saved
+aligned coordinate arrays are the final point output. Do not assume that every
+Space-map run produces an invertible dense-grid archive.
 
-In SpaceMap, grids are represented as 3D tensors with shape `[N, N, 2]`, where N is the grid resolution and the last dimension represents (x, y) coordinates.
+## Spatial resolution
 
-### Coordinate Systems
+Raster and control-grid resolutions trade spatial detail against computational
+cost. The [paper](https://doi.org/10.1038/s41592-026-03310-8) notes that spatial relationships below the chosen
+grid resolution are not directly preserved in the registration objective.
+Numerical interpolation does not restore unobserved cell geometry.
 
-- **Grid Coordinates**: Normalized to [-1, 1]
-- **Image/Point Coordinates**: Pixel or data coordinates, typically [0, N*xyd]
-- The `xyd` (XY density) parameter defines the scaling relationship between them
+## Sources
 
-## Core Operations
-
-### Grid Sampling and Bilinear Interpolation
-
-The core operation is sampling points through the grid (`grid_sample_points_vectorized`), implementing smooth point transformation:
-1. Locate the grid cell containing the point
-2. Calculate interpolation ratios
-3. Perform bilinear interpolation using corner vectors
-4. Scale the result to target coordinate system
-
-**Interpolation Formula:**
-```
-result = (1-y_ratio) * [(1-x_ratio)*top_left + x_ratio*top_right] + 
-         y_ratio * [(1-x_ratio)*bottom_left + x_ratio*bottom_right]
-```
-
-### Inverse Grid Generation
-
-Inverse grids (`inverse_grid_train`) are obtained by minimizing the error between forward and inverse transformations, supporting bidirectional point mapping.
-
-### Grid Generation from Point Sets
-
-`points_gen_grid_train` can optimize and generate smooth grids based on point pair relationships, implementing nonlinear mapping between arbitrary point sets.
-
-### Grid Merging
-
-`merge_grid_img` supports sequential composition of multiple grid transformations, facilitating complex workflow chaining.
-
-## Main Classes and Interfaces
-
-- **GridGenerate**: Object-oriented interface supporting grid generation from point sets, grid refinement, and grid transformation application.
-- **ModelGenerate**: Used for 3D model generation, applying grid transformations to cell boundaries and coordinates for registered 3D visualization.
-
-## Performance and Parameters
-
-- Grid resolution N determines precision and memory consumption
-- `xyd` controls scaling between grid and image space
-- Vectorized operations efficiently handle large-scale point sets
-- Bilinear interpolation balances speed and accuracy
-- Inverse grid computation is more time-consuming than forward transformation
-
-## Integration with SpaceMap Workflow
-
-- Grid transformations are fundamental to LDDMM registration, point set registration, and 3D reconstruction workflows
-- All grid transformations between sections are uniformly managed through `TransformDB`
-- Supports forward/inverse transformations, batch point set processing, and grid composition
-
----
-
-> For reference source code and detailed implementation, please see the related source files above. 
+- [Grid operations](https://github.com/czhu/space-map/blob/master/space_map/utils/grid3.py)
+- [Point-derived grid helpers](https://github.com/czhu/space-map/blob/master/space_map/utils/grid_points.py)
+- [Legacy transform reader](https://github.com/czhu/space-map/blob/master/space_map/flow/outputs.py)
+- [Public archive conventions](https://github.com/czhu/space-map/blob/master/space_map/api/transform.py)

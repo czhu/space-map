@@ -37,7 +37,7 @@ setup(
             'mkdocs-git-revision-date-localized-plugin>=1.0',
         ],
     },
-    description="Reconstructing atlas-level single-cell 3D tissue maps from serial sections",
+    description="3D single-cell atlas reconstruction from serial sections",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Rongduo Han, Chenchen Zhu, Cihan Ruan",
@@ -45,8 +45,11 @@ setup(
     url="https://github.com/czhu/space-map",
     project_urls={
         "Bug Reports": "https://github.com/czhu/space-map/issues",
-        "Documentation": "https://czhu.github.io/space-map",
+        "Documentation": "https://github.com/czhu/space-map/tree/master/docs",
         "Source": "https://github.com/czhu/space-map",
+        "Publication": "https://doi.org/10.1038/s41592-026-03310-8",
+        "Data": "https://snyderlabs.stanford.edu/spacemap/",
+        "Online Platform": "https://spacemap.dataguide.club",
     },
     classifiers=[
         "Development Status :: 4 - Beta",

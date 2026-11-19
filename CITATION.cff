@@ -1,8 +1,8 @@
 cff-version: 1.2.0
-message: "If you use Space-map in your research, please cite it as below."
-title: "Space-map: Reconstructing atlas-level single-cell 3D tissue maps from serial sections"
+message: "If you use Space-map in your research, please cite the published article in preferred-citation."
+title: "Space-map"
 type: software
-license: LicenseRef-PolyForm-Noncommercial-1.0.0
+license: PolyForm-Noncommercial-1.0.0
 url: "https://github.com/czhu/space-map"
 repository-code: "https://github.com/czhu/space-map"
 authors:
@@ -16,7 +16,7 @@ authors:
     given-names: Cihan
     affiliation: Santa Clara University
   - family-names: Snyder
-    given-names: Michael
+    given-names: Michael P.
     affiliation: Stanford School of Medicine
 keywords:
   - spatial-transcriptomics
@@ -26,3 +26,48 @@ keywords:
   - lddmm
 version: "0.2.0"
 date-released: "2026-08-26"
+
+preferred-citation:
+  type: article
+  title: "Space-map: 3D single-cell atlas reconstruction from serial sections"
+  authors:
+    - family-names: Han
+      given-names: Rongduo
+    - family-names: Ruan
+      given-names: Cihan
+    - family-names: Zhao
+      given-names: Bingqing
+    - family-names: Tan
+      given-names: Yuqi
+    - family-names: Monte
+      given-names: Emma
+    - family-names: Wei
+      given-names: Bei
+    - family-names: Bi
+      given-names: Joanna
+    - family-names: Karathanos
+      given-names: Thomas V.
+    - family-names: Laquindanum
+      given-names: Rozelle
+    - family-names: Charville
+      given-names: Gregory W.
+    - family-names: Lin
+      given-names: Yiing
+    - family-names: Ling
+      given-names: Nam
+    - family-names: Ford
+      given-names: James M.
+    - family-names: Nolan
+      given-names: Garry P.
+    - family-names: Wang
+      given-names: Meng
+    - family-names: Zhu
+      given-names: Chenchen
+    - family-names: Snyder
+      given-names: Michael P.
+  journal: Nature Methods
+  year: 2026
+  month: 11
+  date-published: "2026-11-19"
+  doi: 10.1038/s41592-026-03310-8
+  url: "https://doi.org/10.1038/s41592-026-03310-8"

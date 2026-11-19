@@ -1,156 +1,59 @@
-# Spatial Transcriptomics Analysis
+# Evaluation and Downstream Analysis
 
-> Related source files:
-> - [find/__init__.py](https://github.com/czhu/space-map/blob/ad208055/find/__init__.py)
-> - [find/basic.py](https://github.com/czhu/space-map/blob/ad208055/find/basic.py)
-> - [find/cellShape.py](https://github.com/czhu/space-map/blob/ad208055/find/cellShape.py)
-> - [find/nearBound.py](https://github.com/czhu/space-map/blob/ad208055/find/nearBound.py)
-> - [find/nearBoundCellData.py](https://github.com/czhu/space-map/blob/ad208055/find/nearBoundCellData.py)
-> - [find/nearBoundThread.py](https://github.com/czhu/space-map/blob/ad208055/find/nearBoundThread.py)
-> - [flow/afFlow2Multi.py](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2Multi.py)
-> - [utils/compare/cell_metrix.py](https://github.com/czhu/space-map/blob/ad208055/utils/compare/cell_metrix.py)
-> - [utils/compare/filt.py](https://github.com/czhu/space-map/blob/ad208055/utils/compare/filt.py)
-> - [utils/he_img.py](https://github.com/czhu/space-map/blob/ad208055/utils/he_img.py)
+The [paper](https://doi.org/10.1038/s41592-026-03310-8) evaluates registration on in-house Xenium/CODEX and public
+MERFISH/CyCIF data, then examines tissue morphology and cell-type distributions.
+Alignment, molecular annotation, and biological interpretation are separate steps.
 
-## Purpose and Scope
+## Registration evaluation
 
-This section documents the tools and methodologies for analyzing spatial transcriptomics data within the SpaceMap framework. The analysis capabilities enable researchers to quantify, compare, and validate gene expression patterns across aligned tissue sections. For information about the alignment process itself, see [Image Alignment](../alignment/image-alignment.md), and for the 3D reconstruction process, see [3D Reconstruction](../reconstruction/3d-reconstruction.md).
+Methods defines a soft Dice score from non-binarized cell-count density maps
+rasterized on a shared coordinate range. For maps A and B, it uses twice the sum
+of their per-pixel minimum divided by the sum of both maps. The default evaluation
+grid is 512 by 512. The paper also reports binary occupancy Dice, boundary IoU,
+Chamfer distance, density-map Pearson correlation, and MS-SSIM, with metric-specific
+processing described in Methods, Extended Data Table 2, and Supplementary Note 4.
+Do not treat those metrics as interchangeable or mix sparse/binary/soft Dice labels.
 
-## Overview of Spatial Transcriptomics Analysis Components
+The repository's benchmark runner computes Dice, SSIM, PSNR, and MSE using its
+current rendering helpers. The public API reports internal QC, including coordinate
+finiteness and adjacent-section Chamfer distance. Those defaults do not reproduce
+the full published metric suite, preprocessing, or PASTE/STalign-GT comparison.
+See the [benchmark guide](https://github.com/czhu/space-map/blob/master/benchmarks/README.md).
 
-- Expression analysis: grid-based quantification and normalization
-- Layer distance calculation: quantifies similarity between adjacent sections
-- Parallelized processing: efficient computation for large datasets
-- Cell boundary and shape analysis: validates registration quality
-- Cell type distribution analysis: compares cell type patterns across sections
+Similarity between neighboring sections is not independent biological ground
+truth. Tissue morphology naturally changes with depth. A higher score alone
+does not prove correct cell correspondence or tissue shape.
 
-## Cell Expression Analysis
+## Cell types and expression
 
-The cell expression analysis module processes spatial transcriptomics data to compute metrics that quantify gene expression patterns across tissue sections. The core of this functionality is implemented in the `cell_metrix.py` module.
+Keep cell IDs, section IDs, and molecular annotations with the source table, then
+join them to the refined primary coordinates as in the
+[quick start](../getting-started/quickstart.md). The current Flow4 auxiliary-channel
+limitation is described in [Data Management](../data/data-management.md).
 
-### Grid-Based Expression Processing
+Space-map accepts annotations and selected expression profiles as optional
+registration constraints. It does not automatically assign biological cell types,
+infer expression in missing sections, or reconstruct complete cell volumes.
 
-Expression data is analyzed by dividing the tissue space into a grid and aggregating cell expression values within each grid cell:
+## Biological analyses reported in the paper
 
-- Divide the space into a grid with configurable size and overlap
-- Sum expression values within each grid cell
-- Normalize the expression values within each grid cell
+The study examines crypt/gland architecture, axial lumen continuity, regional
+cell-type distributions, and cross-layer stromal–immune neighborhoods. Methods
+identifies Squidpy for neighborhood enrichment analyses. Statistical definitions,
+section selections, and experimental sample scope should follow the paper and
+its supplementary notes, not a generic 3D scatter plot.
 
-See: [`cell_metrix.py`](https://github.com/czhu/space-map/blob/ad208055/utils/compare/cell_metrix.py#L5-L33)
+## Low-level research utilities
 
-### Layer Distance Calculation
+The repository contains expression-grid and boundary-comparison helpers. They
+have dataset-specific inputs and are not automatically run by `register()`.
+`calculate_layer_distances()` needs coordinate tables, grid parameters, and matrix
+paths; it is not a one-argument function accepting expression matrices. Likewise,
+`cmp_layers_label()` requires section ranges and annotated input tables. Consult
+the signatures before using these research utilities.
 
-The `calculate_layer_distances` function computes expression similarity between adjacent tissue sections:
-
-- For each layer pair, compare grid-processed expression matrices
-- Calculate absolute differences between corresponding grid cells
-- Normalize by the number of non-empty grid cells
-- Mean distance across all layer pairs provides an alignment quality metric
-
-See: [`cell_metrix.py`](https://github.com/czhu/space-map/blob/ad208055/utils/compare/cell_metrix.py#L50-L91)
-
-### Parallelized Processing
-
-For large datasets, the framework provides `caculate_layer_distances_thread` for multi-threaded execution:
-
-- Create parameter sets for each comparison (datasets, grid sizes, overlaps)
-- Launch parallel workers using Python's multiprocessing
-- Collect and aggregate results from all workers
-
-See: [`cell_metrix.py`](https://github.com/czhu/space-map/blob/ad208055/utils/compare/cell_metrix.py#L93-L118)
-
-## Cell Boundary and Shape Analysis
-
-SpaceMap provides tools to analyze cell boundaries and shapes across aligned tissue sections, enabling validation of registration quality through cell morphology.
-
-### Nearest Cell Boundary Analysis
-
-The `NearBoundGenerate` class identifies corresponding cells between adjacent sections and computes boundary-based similarity metrics:
-
-- Apply spatial transformations to cell boundaries using TransformDB
-- Identify nearest neighboring cells between adjacent layers
-- Compute boundary similarity metrics between matched cells
-- Aggregate and export metrics for quality assessment
-
-See: [`nearBound.py`](https://github.com/czhu/space-map/blob/ad208055/find/nearBound.py#L11-L246)
-
-### Cell Shape Analysis
-
-The `CellShapeGenerate` class extends boundary analysis with shape-specific metrics:
-
-- Compare bounding box dimensions (min/max coordinates)
-- Calculate aspect ratios before and after transformation
-- Compute area preservation metrics
-- Quantify overall shape similarity
-
-See: [`cellShape.py`](https://github.com/czhu/space-map/blob/ad208055/find/cellShape.py#L8-L84)
-
-## Cell Type Distribution Analysis
-
-SpaceMap provides tools to analyze the distribution of cell types across aligned tissue sections. This functionality helps validate alignment quality by ensuring similar cell type distributions in adjacent regions.
-
-### Cell Type Comparison Methods
-
-- `cmp_layers_label`: Compares cell distributions by cell type labels
-- `cmp_filter_part`: Filters cells within a specific spatial region
-- `cmp_adjacent_layers`: Compares cell distributions in adjacent layers
-- `compare_workflow`: Orchestrates comparison between different datasets
-
-See: [`filt.py`](https://github.com/czhu/space-map/blob/ad208055/utils/compare/filt.py#L11-L159)
-
-## Integration with Registration Pipeline
-
-The spatial transcriptomics analysis components are integrated with the broader registration pipeline through the `AutoFlowMultiCenter2` class, which coordinates the alignment of tissue sections:
-
-- Transformations computed by the registration pipeline are stored in TransformDB
-- Spatial transcriptomics analysis uses these transformations via the TransformDB API
-- Quality metrics from the analysis can be used to refine registration parameters
-- The multi-center approach in `AutoFlowMultiCenter2` starts from a center slice and works outward in both directions
-
-See: [`afFlow2Multi.py`](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2Multi.py#L7-L157)
-
-## Practical Usage
-
-### Cell Expression Matrix Analysis
-
-To calculate distances between expression patterns in adjacent layers:
-
-```python
-# Example usage for calculating layer distances
-from spacemap.utils.compare.cell_metrix import calculate_layer_distances
-# ... load your expression data ...
-distances = calculate_layer_distances(expression_matrices)
-```
-
-For large datasets, use the parallelized version:
-
-```python
-from spacemap.utils.compare.cell_metrix import caculate_layer_distances_thread
-# ... load your expression data ...
-results = caculate_layer_distances_thread(expression_matrices)
-```
-
-### Cell Boundary Analysis
-
-To analyze cell boundaries across sections:
-
-```python
-from spacemap.find.nearBound import NearBoundGenerate
-# ... prepare your cell boundary data ...
-nbg = NearBoundGenerate(...)
-nbg.run()
-```
-
-### Cell Type Distribution Comparison
-
-To compare cell type distributions across sections:
-
-```python
-from spacemap.utils.compare.filt import cmp_layers_label
-# ... prepare your cell type data ...
-result = cmp_layers_label(layer1, layer2)
-```
-
----
-
-> For reference source code and detailed implementation, please see the related source files above. 
+- [Expression-grid comparisons](https://github.com/czhu/space-map/blob/master/space_map/utils/compare/cell_metrix.py)
+- [Cell-type comparisons](https://github.com/czhu/space-map/blob/master/space_map/utils/compare/filt.py)
+- [Boundary analysis](https://github.com/czhu/space-map/blob/master/space_map/find/nearBound.py)
+- [Current QC implementation](https://github.com/czhu/space-map/blob/master/space_map/api/qc.py)
+- [Image similarity helpers](https://github.com/czhu/space-map/blob/master/space_map/find/err.py)

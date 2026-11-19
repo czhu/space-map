@@ -112,7 +112,7 @@ def my_function(param1, param2):
 When adding new features:
 - Update relevant documentation in `docs/`
 - Add examples if appropriate
-- Update README.md if needed
+- Update readme.md if needed
 
 To build documentation locally:
 ```bash
@@ -152,7 +152,7 @@ If you have questions:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the project's [PolyForm Noncommercial License 1.0.0](LICENSE).
 
 ## Acknowledgments
 

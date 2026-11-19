@@ -1,120 +1,60 @@
-# 3D Reconstruction
+# 3D Reconstruction and Visualization
 
-> 相关源文件：
-> - [affine/FilterGraphPart.py](https://github.com/czhu/space-map/blob/ad208055/affine/FilterGraphPart.py)
-> - [flow/__init__.py](https://github.com/czhu/space-map/blob/ad208055/flow/__init__.py)
-> - [flow/afFlow2Basic.py](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2Basic.py)
-> - [flow/afFlow2MultiDF.py](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2MultiDF.py)
-> - [matches/__init__.py](https://github.com/czhu/space-map/blob/ad208055/matches/__init__.py)
-> - [matches/matchInitMulti.py](https://github.com/czhu/space-map/blob/ad208055/matches/matchInitMulti.py)
-> - [registration/ldm/torch_LDDMM2D.py](https://github.com/czhu/space-map/blob/ad208055/registration/ldm/torch_LDDMM2D.py)
-> - [utils/AutoGradHE.py](https://github.com/czhu/space-map/blob/ad208055/utils/AutoGradHE.py)
-> - [utils/model3d.py](https://github.com/czhu/space-map/blob/ad208055/utils/model3d.py)
+Space-map aligns observed serial sections into a shared in-plane coordinate
+system. The [paper](https://doi.org/10.1038/s41592-026-03310-8) uses these coordinates to reconstruct intestinal
+tissue architecture and visualize cell-type distributions through tissue depth.
+This is serial-section reconstruction rather than direct volumetric imaging or
+segmentation of complete 3D cells.
 
-## 简介
+## Coordinate and density outputs
 
-SpaceMap 的 3D 重建系统将一系列已配准的 2D 组织切片转换为统一的 3D 模型。
+The public API returns aligned `(N, 2)` cell coordinates for each section.
+Use the [quick start](../getting-started/quickstart.md) to retain original section
+IDs and metadata. The low-level `FlowExport` also exports density TIFFs and
+scatter previews after a workflow has produced the requested stage.
 
-- 先对每个切片生成坐标变换 grid
-- 应用变换将切片数据映射到统一 3D 空间
-- 合并所有切片数据，形成完整 3D 组织结构
+For a low-level workflow with aligned `slices`:
 
-For more about image alignment, see: [Image Alignment](../alignment/image-alignment.md).
+```python
+from space_map import Slice
+from space_map.flow import FlowExport
 
-## Grid 生成
+export = FlowExport(slices)
+export.export_imaris_tiff("out/imaris", key=Slice.align2Key, channels=["DF"])
+export.plot_3d(key=Slice.align2Key, channel="DF", by_celltype=False,
+               save="out/reconstruction.png")
+```
 
-- 通过 `model3d.generate_grid` 为每层生成稠密变换场（grid），实现原始与配准空间的精确映射
-- 支持并行处理提升效率
-- grid 以 numpy 数组保存，便于后续应用
+The current Flow4 non-rigid step refines only density coordinates. Auxiliary
+cell-type or gene channels can retain affine coordinates, as explained in
+[Data Management](../data/data-management.md). Their previews must not be
+presented as proof of non-rigid registration of those channels.
 
-相关代码片段：
-- [model3d.py#L18-L47](https://github.com/czhu/space-map/blob/ad208055/utils/model3d.py#L18-L47)
+## Physical depth
 
-## 变换应用
+`FlowExport.plot_3d()` chooses an automatic Z gap for display unless one is
+provided. It does not infer section thickness or missing depth. TIFF stacks
+also need correct voxel spacing in the downstream viewer. Use acquisition
+metadata for physical Z positions and account for known gaps.
 
-### 图像变换
-- `grid_sample_img` 利用 PyTorch grid sampling 对图像进行双线性插值变换
-- 支持高效 GPU 加速
+The final Xenium-Polyp model in the paper uses 20 sections (3–22), not every
+section in the profiled 30-section dataset. CODEX duodenum and sigmoid models
+each use 16 sections; the study describes 80-micrometer reconstructed volumes.
 
-相关代码片段：
-- [model3d.py#L68-L104](https://github.com/czhu/space-map/blob/ad208055/utils/model3d.py#L68-L104)
+## Meshes and downstream analyses
 
-### 点集变换
-- 细胞等点数据通过 AutoFlow 流程先仿射再 grid 非线性变换
+The paper used Imaris and Blender for final visualization. A TIFF export is not
+an Imaris `.ims` project or a surface mesh, and the public API does not expose
+one-command OBJ/PLY/IMS export. Published meshes and additional data are linked
+from the [data page](../index.md#data-availability).
 
-相关代码片段：
-- [afFlow2Basic.py#L202-L210](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2Basic.py#L202-L210)
+Reconstruction can support morphology and cell-distribution analysis. A smooth
+rendering alone does not validate individual cell shape or true cross-section
+cell identity. The paper reports evaluation of lumen continuity and spatial
+organization; see its figures and supplementary analyses for their definitions.
 
-## 多分辨率与中心切片策略
+## Sources
 
-- 采用多分辨率重建，兼顾效率与精度
-- 以中心切片为参考，双向配准，减少误差累积
-- 支持并行处理
-
-相关代码片段：
-- [afFlow2MultiDF.py#L62-L73](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2MultiDF.py#L62-L73)
-
-## LDM Pair 配准
-
-- 邻近切片间采用 LDDMM（LDM Pair）非线性配准，生成高精度 grid
-- 结果用于后续 grid 合成与 3D 重建
-
-相关代码片段：
-- [afFlow2MultiDF.py#L21-L60](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2MultiDF.py#L21-L60)
-
-## Grid 合成
-
-- 支持正向（raw→aligned）与逆向（aligned→raw）grid 合成，形成全局一致的 3D 坐标系
-
-相关代码片段：
-- [afFlow2Basic.py#L211-L223](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2Basic.py#L211-L223)
-
-## 3D 模型导出
-
-- 可导出每层变换后图像、grid、点坐标等
-- 便于可视化与后续分析
-
-相关代码片段：
-- [flow/__init__.py#L1-L15](https://github.com/czhu/space-map/blob/ad208055/flow/__init__.py#L1-L15)
-- [model3d.py#L9-L17](https://github.com/czhu/space-map/blob/ad208055/utils/model3d.py#L9-L17)
-
-## 误差评估
-
-- 提供切片间误差评估工具，量化重建质量
-
-相关代码片段：
-- [model3d.py#L48-L62](https://github.com/czhu/space-map/blob/ad208055/utils/model3d.py#L48-L62)
-
-## 全流程集成
-
-- 3D 重建流程集成了 grid 生成、变换应用、配准、合成、导出与误差评估
-- 关键函数包括：`generate_imgs_basic`、`generate_grid`、`grid_sample_img`、`ldm_pair`、`ldm_merge_pair`
-
-相关代码片段：
-- [model3d.py#L9-L104](https://github.com/czhu/space-map/blob/ad208055/utils/model3d.py#L9-L104)
-- [afFlow2MultiDF.py#L21-L158](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2MultiDF.py#L21-L158)
-- [registration/ldm/torch_LDDMM2D.py#L47-L63](https://github.com/czhu/space-map/blob/ad208055/registration/ldm/torch_LDDMM2D.py#L47-L63)
-
-## 性能优化
-
-- 并行处理 grid 生成
-- GPU 加速变换
-- 中心切片策略减少误差累积
-
-相关代码片段：
-- [model3d.py#L32-L34](https://github.com/czhu/space-map/blob/ad208055/utils/model3d.py#L32-L34)
-- [afFlow2MultiDF.py#L120-L124](https://github.com/czhu/space-map/blob/ad208055/flow/afFlow2MultiDF.py#L120-L124)
-- [registration/ldm/torch_LDDMM2D.py#L19-L22](https://github.com/czhu/space-map/blob/ad208055/registration/ldm/torch_LDDMM2D.py#L19-L22)
-
-## 重要组件表
-
-| 组件                | 说明                   | 实现位置                       |
-|---------------------|------------------------|-------------------------------|
-| GridGenerate        | 生成变换 grid          | model3d.py                    |
-| apply_grid          | 应用 grid 到坐标       | Slice 类                      |
-| _merge_grid         | grid 合成              | model3d.py                    |
-| grid_sample_img     | grid 可视化/图像变换   | model3d.py                    |
-
----
-
-SpaceMap 的 3D 重建系统通过高效的 grid 变换、LDDMM 配准、多分辨率与中心切片策略，实现了高精度、可扩展的组织 3D 重建。 
+- [Coordinate results](https://github.com/czhu/space-map/blob/master/space_map/api/result.py)
+- [TIFF and preview exports](https://github.com/czhu/space-map/blob/master/space_map/flow/flowExport.py)
+- [Legacy image/grid helpers](https://github.com/czhu/space-map/blob/master/space_map/utils/model3d.py)
